@@ -17,7 +17,7 @@ async def test_prd_indexes_exist_after_migration(session: AsyncSession) -> None:
     )
     present = {row[0] for row in result}
 
-    assert EXPECTED <= present, f"missing: {EXPECTED - present}"
+    assert present >= EXPECTED, f"missing: {EXPECTED - present}"
 
 
 async def test_users_email_is_unique_indexed(session: AsyncSession) -> None:

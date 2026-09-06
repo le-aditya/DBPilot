@@ -6,7 +6,7 @@ from sqlalchemy.orm import Mapped, mapped_column
 from app.db.base import TimestampedBase
 
 
-class QueryStatus(str, enum.Enum):
+class QueryStatus(enum.StrEnum):
     success = "success"
     error = "error"
     blocked = "blocked"

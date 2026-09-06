@@ -10,7 +10,7 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class SourceType(str, enum.Enum):
+class SourceType(enum.StrEnum):
     upload = "upload"
     connection = "connection"
 

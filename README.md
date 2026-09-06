@@ -25,7 +25,7 @@ py -3.11 -m venv .venv
 .venv/Scripts/python -m pip install -e ".[dev]"
 cp .env.example .env    # then fill in the real values
 .venv/Scripts/alembic upgrade head
-.venv/Scripts/uvicorn app.main:app --reload
+.venv/Scripts/python run.py --reload
 
 cd ../frontend
 npm install
@@ -38,6 +38,10 @@ npm run dev
 - `frontend/` — React + Vite client
 - `docs/` — design document, plans, normalisation write-up, benchmarks
 - `scripts/` — cluster bootstrap and demo seeding
+
+Start the server with `run.py`, not `uvicorn app.main:app`. On Windows,
+uvicorn builds a ProactorEventLoop that psycopg 3 cannot drive; `run.py`
+installs a selector loop first so database queries work.
 
 ## Safety
 
