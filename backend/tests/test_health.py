@@ -1,20 +1,7 @@
-from collections.abc import AsyncIterator
-
 import pytest
-import pytest_asyncio
-from httpx import ASGITransport, AsyncClient
-
-from app.main import create_app
+from httpx import AsyncClient
 
 pytestmark = pytest.mark.integration
-
-
-@pytest_asyncio.fixture
-async def client() -> AsyncIterator[AsyncClient]:
-    app = create_app()
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as opened:
-        yield opened
 
 
 async def test_health_reports_ok_when_the_database_answers(

@@ -1,12 +1,26 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
+import { Login } from './routes/Login'
+import { Projects } from './routes/Projects'
+import { ProtectedRoute } from './routes/ProtectedRoute'
+import { Register } from './routes/Register'
 import { Tokens } from './routes/Tokens'
 
 export default function App() {
   return (
     <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/register" element={<Register />} />
+      <Route
+        path="/projects"
+        element={
+          <ProtectedRoute>
+            <Projects />
+          </ProtectedRoute>
+        }
+      />
       <Route path="/tokens" element={<Tokens />} />
-      <Route path="*" element={<Navigate to="/tokens" replace />} />
+      <Route path="*" element={<Navigate to="/projects" replace />} />
     </Routes>
   )
 }

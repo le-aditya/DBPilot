@@ -6,10 +6,13 @@ from pathlib import Path
 
 import pytest
 import pytest_asyncio
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.core.config import Settings, get_settings
 from app.db.engine import create_engine
+from app.db.session import get_session
+from app.main import create_app
 
 BACKEND = Path(__file__).resolve().parent.parent
 
@@ -60,3 +63,22 @@ async def session(engine: AsyncEngine) -> AsyncIterator[AsyncSession]:
         async with AsyncSession(bind=connection, expire_on_commit=False) as opened:
             yield opened
         await transaction.rollback()
+
+
+@pytest_asyncio.fixture
+async def client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
+    """An API client bound to the test session, so requests roll back.
+
+    The session is joined to an outer transaction the `session` fixture rolls
+    back, so a handler calling session.commit() still leaves no rows behind.
+    """
+    app = create_app()
+
+    async def _use_test_session() -> AsyncIterator[AsyncSession]:
+        yield session
+
+    app.dependency_overrides[get_session] = _use_test_session
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as opened:
+        yield opened
+    app.dependency_overrides.clear()

@@ -5,6 +5,7 @@ from app.models import (  # noqa: F401  (import registers the mappers)
     Explanation,
     Project,
     Query,
+    RefreshToken,
     SavedQuery,
     Upload,
     User,
@@ -18,6 +19,7 @@ EXPECTED_TABLES = {
     "queries",
     "explanations",
     "saved_queries",
+    "refresh_tokens",
     "diagram_layouts",
 }
 
@@ -66,3 +68,13 @@ def test_queries_records_the_denormalised_dashboard_columns() -> None:
     assert "row_count" in table.columns
     assert "duration_ms" in table.columns
     assert table.columns["status"].nullable is False
+
+
+def test_refresh_tokens_support_rotation_and_reuse_detection() -> None:
+    """PRD F1 rotates refresh tokens on use; that needs revocation state."""
+    table = Base.metadata.tables["dbpilot.refresh_tokens"]
+
+    assert table.columns["jti"].unique is True
+    assert table.columns["revoked_at"].nullable is True
+    assert "replaced_by_jti" in table.columns
+    assert table.columns["expires_at"].nullable is False

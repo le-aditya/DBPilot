@@ -5,6 +5,7 @@ from app.models.diagram_layout import DiagramLayout
 from app.models.explanation import Explanation
 from app.models.project import Project, SourceType
 from app.models.query import Query, QueryStatus
+from app.models.refresh_token import RefreshToken
 from app.models.saved_query import SavedQuery
 from app.models.upload import Upload
 from app.models.user import User
@@ -16,6 +17,7 @@ __all__ = [
     "Project",
     "Query",
     "QueryStatus",
+    "RefreshToken",
     "SavedQuery",
     "SourceType",
     "Upload",
