@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: dbpilot_app
+          POSTGRES_PASSWORD: dbpilot_ci
+          POSTGRES_DB: dbpilot_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql+psycopg://dbpilot_app:dbpilot_ci@localhost:5432/dbpilot_test
+      TEST_DATABASE_URL: postgresql+psycopg://dbpilot_app:dbpilot_ci@localhost:5432/dbpilot_test
+      JWT_SECRET: ci-secret-not-used-in-production
+      # Throwaway CI value. Never used against real data.
+      DBPILOT_ENCRYPTION_KEY: 4Nf1kQ0mS2vX8yZ7bC3dE6gH9jK2lM5nP8qR1sT4uV0=
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install
+        working-directory: backend
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Create the metadata schema
+        run: |
+          PGPASSWORD=dbpilot_ci psql -h localhost -U dbpilot_app -d dbpilot_test \
+            -c "CREATE SCHEMA IF NOT EXISTS dbpilot AUTHORIZATION dbpilot_app;"
+
+      - name: Lint
+        working-directory: backend
+        run: ruff check app tests run.py
+
+      - name: Type-check
+        working-directory: backend
+        run: mypy app
+
+      - name: Migrate
+        working-directory: backend
+        run: alembic upgrade head
+
+      - name: Test
+        working-directory: backend
+        run: pytest -v
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        working-directory: frontend
+        run: npm ci
+
+      - name: Test
+        working-directory: frontend
+        run: npx vitest run
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
