@@ -1,6 +1,6 @@
 import enum
 
-from sqlalchemy import Enum, ForeignKey, Text
+from sqlalchemy import Enum, ForeignKey, Index, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import TimestampedBase
@@ -14,6 +14,16 @@ class QueryStatus(str, enum.Enum):
 
 class Query(TimestampedBase):
     __tablename__ = "queries"
+    __table_args__ = (
+        # PRD §6 — powers history and the dashboard, the hottest read path.
+        Index(
+            "ix_queries_project_id_created_at",
+            "project_id",
+            text("created_at DESC"),
+        ),
+        # PRD §6 — filtered activity views.
+        Index("ix_queries_user_id_status", "user_id", "status"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     project_id: Mapped[int] = mapped_column(

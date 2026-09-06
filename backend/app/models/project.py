@@ -1,7 +1,7 @@
 import enum
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Enum, ForeignKey, String, UniqueConstraint
+from sqlalchemy import Enum, ForeignKey, Index, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import TimestampedBase
@@ -17,7 +17,11 @@ class SourceType(str, enum.Enum):
 
 class Project(TimestampedBase):
     __tablename__ = "projects"
-    __table_args__ = (UniqueConstraint("user_id", "name"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "name"),
+        # PRD §6 — every request scopes by owner.
+        Index("ix_projects_user_id", "user_id"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
