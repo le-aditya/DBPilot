@@ -9,7 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import auth, health
+from app.api import auth, health, projects
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.db.engine import dispose_engine
@@ -53,19 +53,32 @@ def create_app() -> FastAPI:
     async def _validation_error(
         _: Request, exc: RequestValidationError
     ) -> JSONResponse:
+        # Pydantic puts the original exception object in each error's "ctx",
+        # which JSONResponse cannot serialise. Take only what a caller can act
+        # on: which field, and what is wrong with it.
+        fields = [
+            {
+                "field": ".".join(
+                    str(part) for part in error["loc"] if part != "body"
+                ),
+                "message": error["msg"],
+            }
+            for error in exc.errors()
+        ]
         return JSONResponse(
             status_code=422,
             content={
                 "error": {
                     "code": "validation_error",
                     "message": "The request body was not valid.",
-                    "fields": exc.errors(),
+                    "fields": fields,
                 }
             },
         )
 
     app.include_router(auth.router)
     app.include_router(health.router)
+    app.include_router(projects.router)
     return app
 
 
