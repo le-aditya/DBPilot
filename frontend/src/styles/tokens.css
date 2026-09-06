@@ -1,0 +1,60 @@
+@import 'tailwindcss';
+
+@theme {
+  /* PRD 10.2 — the only palette. No component writes a raw hex. */
+  --color-canvas: #0a0a0a;
+  --color-surface: #141414;
+  --color-border: #232323;
+  --color-border-hover: #313131;
+
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #8a8a8a;
+  --color-text-tertiary: #5a5a5a;
+
+  /* Acid lime, the ONLY accent. Budget: primary CTA, small status dots, and
+     one data highlight per screen. Never on small copy — PRD 10.8. */
+  --color-accent: #d4ff3f;
+  /* Used as light behind a surface, never as a fill — PRD 10.2. */
+  --color-glow-violet: #4c3bcf;
+
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* PRD 10.3 type scale */
+  --text-display: 4rem;
+  --text-display--line-height: 0.98;
+  --text-display--letter-spacing: -0.02em;
+  --text-h2: 2.5rem;
+  --text-h2--line-height: 1.05;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h3: 1.5rem;
+  --text-h3--line-height: 1.2;
+  --text-body: 1rem;
+  --text-body--line-height: 1.6;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.5;
+  --text-eyebrow: 0.6875rem;
+  --text-eyebrow--line-height: 1.2;
+  --text-eyebrow--letter-spacing: 0.12em;
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--color-canvas);
+  color: var(--color-text-primary);
+  font-family: var(--font-sans);
+  margin: 0;
+}
+
+/* PRD 10.6 — motion is restrained, and optional. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
