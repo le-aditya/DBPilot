@@ -57,3 +57,24 @@ def test_settings_require_a_secret(env: pytest.MonkeyPatch) -> None:
 
     with pytest.raises(ValueError):
         Settings(_env_file=None)  # type: ignore[call-arg]
+
+
+def test_a_managed_host_url_is_normalised_onto_psycopg3(
+    env: pytest.MonkeyPatch,
+) -> None:
+    """Render and Railway hand out postgresql://, which the async engine rejects."""
+    env.setenv("DATABASE_URL", "postgresql://u:p@host:5432/d")
+
+    assert Settings(_env_file=None).database_url == "postgresql+psycopg://u:p@host:5432/d"  # type: ignore[call-arg]
+
+
+def test_the_older_postgres_scheme_is_normalised_too(env: pytest.MonkeyPatch) -> None:
+    env.setenv("DATABASE_URL", "postgres://u:p@host:5432/d")
+
+    assert Settings(_env_file=None).database_url == "postgresql+psycopg://u:p@host:5432/d"  # type: ignore[call-arg]
+
+
+def test_an_already_qualified_url_is_left_alone(env: pytest.MonkeyPatch) -> None:
+    env.setenv("DATABASE_URL", "postgresql+psycopg://u:p@host:5432/d")
+
+    assert Settings(_env_file=None).database_url == "postgresql+psycopg://u:p@host:5432/d"  # type: ignore[call-arg]

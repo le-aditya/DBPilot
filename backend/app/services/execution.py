@@ -7,7 +7,9 @@ safety claim.
 """
 
 import time
+from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from psycopg import errors as pg_errors
 from psycopg import sql
@@ -59,11 +61,20 @@ async def execute_sql(
     generated_sql: str | None = None,
     was_edited: bool = False,
     allow_full_export: bool = False,
+    parameters: Sequence[Any] | None = None,
+    gate_sql: str | None = None,
 ) -> ExecutionResult:
-    """Gate `sql_text`, run it read-only if it passes, and log the attempt."""
+    """Gate `sql_text`, run it read-only if it passes, and log the attempt.
+
+    `gate_sql` lets a caller gate something other than what it executes. Only
+    saved-query parameters use it: the gate cannot parse a bare `:name`, so it
+    inspects a copy with type-appropriate sentinel literals while the real
+    template is bound and run (design section 11). The rewriting is the caller's
+    job, and the gate still passes judgement on every clause.
+    """
     settings = get_settings()
     decision = gate(
-        sql_text,
+        gate_sql if gate_sql is not None else sql_text,
         allow_full_export=allow_full_export,
         row_limit=settings.default_row_limit,
     )
@@ -95,13 +106,18 @@ async def execute_sql(
         )
 
     assert isinstance(decision, Allowed)
-    record.executed_sql = decision.sql
+    # When a sentinel copy was gated, the statement to run is the caller's, with
+    # the gate's row limit appended so the cap still applies.
+    running_sql = sql_text if gate_sql is not None else decision.sql
+    if gate_sql is not None and decision.limit_injected:
+        running_sql = f"{running_sql.rstrip().rstrip(';')} LIMIT {settings.default_row_limit}"
+    record.executed_sql = running_sql
 
     started = time.perf_counter()
     try:
         async with readonly_connection(project) as connection:
             result = await raw.fetch_all_with_columns(
-                connection, sql.SQL(decision.sql)
+                connection, sql.SQL(running_sql), parameters
             )
         columns, rows = result
     except pg_errors.QueryCanceled as error:
@@ -137,7 +153,7 @@ async def execute_sql(
         rows=[[_jsonable(cell) for cell in row] for row in rows],
         row_count=len(rows),
         duration_ms=duration_ms,
-        executed_sql=decision.sql,
+        executed_sql=running_sql,
         truncated=decision.limit_injected and len(rows) >= settings.default_row_limit,
         error=None,
         rule=None,

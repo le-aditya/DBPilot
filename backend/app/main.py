@@ -9,7 +9,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.api import auth, erd, health, projects, queries, schema, uploads
+from app.api import (
+    auth,
+    connections,
+    erd,
+    health,
+    insights,
+    projects,
+    queries,
+    schema,
+    uploads,
+)
 from app.core.config import get_settings
 from app.core.errors import AppError
 from app.db.engine import dispose_engine
@@ -79,7 +89,10 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(health.router)
     app.include_router(projects.router)
+    app.include_router(connections.router)
     app.include_router(erd.router)
+    app.include_router(insights.router)
+    app.include_router(insights.project_router)
     app.include_router(queries.router)
     app.include_router(schema.router)
     app.include_router(uploads.router)

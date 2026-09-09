@@ -60,11 +60,25 @@ class Settings(BaseSettings):
     @field_validator("database_url", "test_database_url")
     @classmethod
     def _require_psycopg3(cls, value: str | None) -> str | None:
-        """psycopg2 cannot drive the async engine; catch the mistake at startup."""
-        if value is not None and "psycopg2" in value:
+        """Normalise the URL onto psycopg 3, which is the only driver that works.
+
+        Managed hosts (Render, Railway, Heroku) hand out `postgresql://` and
+        some still hand out `postgres://`. SQLAlchemy's async engine needs an
+        explicit async driver, so an unqualified URL is rewritten rather than
+        left to fail at the first connection with an unhelpful error.
+
+        psycopg2 is a different matter: it cannot drive the async engine at all,
+        so naming it explicitly is a mistake worth catching loudly at startup.
+        """
+        if value is None:
+            return None
+        if "psycopg2" in value:
             raise ValueError(
                 "DBPilot requires the psycopg 3 driver: use postgresql+psycopg://"
             )
+        for prefix in ("postgresql://", "postgres://"):
+            if value.startswith(prefix):
+                return "postgresql+psycopg://" + value[len(prefix) :]
         return value
 
     @field_validator("bcrypt_rounds")

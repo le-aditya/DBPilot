@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
-import { apiFetch, ApiError } from '../../lib/api'
+import { apiFetch, apiRaw, ApiError } from '../../lib/api'
 import type {
   ExecuteResponse,
   ExplanationResponse,
@@ -10,6 +10,7 @@ import type {
   QuestionResponse,
 } from '../../lib/types'
 import { ExplanationPanel } from './ExplanationPanel'
+import { SaveQueryDialog } from './SaveQueryDialog'
 import { ResultsTable } from './ResultsTable'
 import { SchemaRail } from './SchemaRail'
 
@@ -36,6 +37,8 @@ export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
   const [explanation, setExplanation] = useState<ExplanationResponse | null>(null)
   const [notes, setNotes] = useState<ExplanationResponse | null>(null)
   const [busyPanel, setBusyPanel] = useState<'explain' | 'optimize' | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [notice, setNotice] = useState('')
 
   const edited = sql.trim() !== generatedSql.trim()
 
@@ -64,6 +67,30 @@ export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
     } finally {
       setAsking(false)
     }
+  }
+
+  function exportAs(format: 'csv' | 'json' | 'markdown') {
+    const params = new URLSearchParams({ format })
+    if (format !== 'markdown') params.set('sql', sql)
+    // A plain link would drop the Authorization header, so the request goes
+    // through the API client and the blob is handed to the browser here.
+    void (async () => {
+      setError('')
+      try {
+        const response = await apiRaw(`/projects/${projectId}/export?${params}`)
+        const blob = await response.blob()
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = format === 'markdown' ? 'schema.md' : `results.${format}`
+        document.body.appendChild(link)
+        link.click()
+        link.remove()
+        URL.revokeObjectURL(url)
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : 'That export failed.')
+      }
+    })()
   }
 
   async function describe(kind: 'explain' | 'optimize') {
@@ -200,6 +227,13 @@ export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
             >
               {busyPanel === 'optimize' ? 'Analysing…' : 'Optimise'}
             </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setSaving(true)}
+              disabled={!sql.trim()}
+            >
+              Save
+            </Button>
             {execution?.status === 'success' ? (
               <span className="text-small text-text-secondary">
                 {execution.row_count} rows in {execution.duration_ms} ms
@@ -212,6 +246,39 @@ export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
           <p role="alert" className="mt-6 text-small text-text-primary">
             {error}
           </p>
+        ) : null}
+
+        {notice ? (
+          <p role="status" className="mt-6 text-small text-text-secondary">
+            {notice}
+          </p>
+        ) : null}
+
+        {saving ? (
+          <SaveQueryDialog
+            sql={sql}
+            onClose={() => setSaving(false)}
+            onSaved={(name) => {
+              setSaving(false)
+              setNotice(`Saved as “${name}”.`)
+            }}
+          />
+        ) : null}
+
+        {execution?.status === 'success' ? (
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <span className="text-small text-text-secondary">Export</span>
+            {(['csv', 'json', 'markdown'] as const).map((format) => (
+              <button
+                key={format}
+                type="button"
+                onClick={() => exportAs(format)}
+                className="text-small text-text-secondary underline hover:text-text-primary"
+              >
+                {format === 'markdown' ? 'schema as Markdown' : format.toUpperCase()}
+              </button>
+            ))}
+          </div>
         ) : null}
 
         {execution ? <ResultsTable execution={execution} /> : null}

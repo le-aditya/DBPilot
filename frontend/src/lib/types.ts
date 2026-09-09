@@ -167,3 +167,43 @@ export interface ExplanationResponse {
   summary: string
   clauses: ExplanationClause[]
 }
+
+export interface QuerySummary {
+  id: number
+  question_text: string | null
+  executed_sql: string | null
+  status: QueryStatus
+  row_count: number | null
+  duration_ms: number | null
+  was_edited: boolean
+  error_message: string | null
+  created_at: string
+}
+
+export interface DashboardResponse {
+  table_count: number
+  total_rows: number
+  storage_bytes: number
+  queries_run: number
+  queries_this_week: number
+  blocked_count: number
+  average_duration_ms: number | null
+  slowest: QuerySummary[]
+  recent: QuerySummary[]
+}
+
+export interface HistoryResponse {
+  queries: QuerySummary[]
+  total: number
+  limit: number
+  offset: number
+}
+
+export interface SavedQuery {
+  id: number
+  name: string
+  sql_template: string
+  parameters: { name: string; type: string; label: string; default: string | null }[]
+  query_id: number | null
+  created_at: string
+}
