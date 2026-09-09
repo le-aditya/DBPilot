@@ -7,6 +7,7 @@ import { download, toPngBlob, toSvgBlob } from './export'
 import {
   anchor,
   boundsOf,
+  fitText,
   HEADER_HEIGHT,
   layoutNodes,
   MAX_VISIBLE_COLUMNS,
@@ -145,8 +146,16 @@ export function ErdCanvas({ projectId, erd }: ErdCanvasProps) {
         </p>
       ) : null}
 
+      {erd.edges.length === 0 ? (
+        <p className="mb-4 text-small text-text-secondary">
+          {erd.nodes.length === 1
+            ? 'One table, so there are no relationships to draw yet. Upload a second CSV and link them with a foreign key on the review screen, and the lines will appear here.'
+            : 'No foreign keys yet. Declare one on the upload review screen and the relationships will appear here.'}
+        </p>
+      ) : null}
+
       {/* PRD 9: below 768px the diagram gives way to the table list. */}
-      <div className="hidden overflow-auto rounded-2xl border border-border bg-surface md:block">
+      <div className="hidden overflow-auto rounded-2xl border border-border bg-surface p-4 md:flex md:justify-center">
         <svg
           ref={svgRef}
           role="img"
@@ -222,8 +231,10 @@ export function ErdCanvas({ projectId, erd }: ErdCanvasProps) {
                   strokeWidth={selected === node.name ? 2 : 1}
                 />
                 <text x={14} y={25} className="fill-text-primary text-[13px] font-medium">
-                  {node.name}
+                  {/* Room reserved for the row count on the right. */}
+                  {fitText(node.name, node.width - 70)}
                 </text>
+                <title>{node.name}</title>
                 <text
                   x={node.width - 14}
                   y={25}
@@ -251,7 +262,7 @@ export function ErdCanvas({ projectId, erd }: ErdCanvasProps) {
                       }
                     >
                       {column.is_primary_key ? '● ' : column.is_foreign_key ? '○ ' : '  '}
-                      {column.name}
+                      {fitText(column.name, node.width - 100, 11)}
                     </text>
                     <text
                       x={node.width - 14}

@@ -17,6 +17,10 @@ import { SchemaRail } from './SchemaRail'
 interface QueryWorkspaceProps {
   projectId: number
   schema: ProjectSchema
+  /** Controlled by the project page, so History can load a query into here
+   *  and so the text survives switching tabs. */
+  sql: string
+  onSqlChange: (sql: string) => void
 }
 
 /**
@@ -25,9 +29,13 @@ interface QueryWorkspaceProps {
  * boldness goes: the SQL block is a data surface with the violet glow, and it
  * is the only place monospace appears outside a result cell.
  */
-export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
+export function QueryWorkspace({
+  projectId,
+  schema,
+  sql,
+  onSqlChange: setSql,
+}: QueryWorkspaceProps) {
   const [question, setQuestion] = useState('')
-  const [sql, setSql] = useState('')
   const [generatedSql, setGeneratedSql] = useState('')
   const [answer, setAnswer] = useState<QuestionResponse | null>(null)
   const [execution, setExecution] = useState<ExecuteResponse | null>(null)
@@ -136,7 +144,7 @@ export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
 
   return (
     <div className="flex flex-col gap-10 lg:flex-row">
-      <SchemaRail schema={schema} onInsert={(text) => setSql((s) => s + text)} />
+      <SchemaRail schema={schema} onInsert={(text) => setSql(sql + text)} />
 
       <div className="min-w-0 flex-1">
         <label htmlFor="question" className="text-small text-text-secondary">

@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -47,8 +49,16 @@ const SUCCESS: ExecuteResponse = {
   rule: null,
 }
 
+/** The SQL box is controlled by the project page, so the test owns it too. */
+function Harness() {
+  const [sql, setSql] = useState('')
+  return (
+    <QueryWorkspace projectId={1} schema={SCHEMA} sql={sql} onSqlChange={setSql} />
+  )
+}
+
 function renderWorkspace() {
-  render(<QueryWorkspace projectId={1} schema={SCHEMA} />)
+  render(<Harness />)
 }
 
 describe('QueryWorkspace', () => {

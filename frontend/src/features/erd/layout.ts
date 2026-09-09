@@ -17,6 +17,20 @@ export interface PlacedNode extends ErdNode {
   height: number
 }
 
+/** Characters that fit in `width` px at `size` px, for this font.
+ *
+ *  SVG <text> does not wrap or clip, so a long table name silently draws over
+ *  whatever is beside it — which is how `online_food_delivery_dataset` ended up
+ *  on top of its own row count. Truncating up front is the fix.
+ */
+export function fitText(text: string, width: number, size = 13): string {
+  const perChar = size * 0.58  // measured for the Inter stack at these sizes
+  const max = Math.floor(width / perChar)
+  if (text.length <= max) return text
+  return `${text.slice(0, Math.max(1, max - 1))}…`
+}
+
+
 export function nodeHeight(node: ErdNode): number {
   const rows = Math.min(node.columns.length, MAX_VISIBLE_COLUMNS)
   const overflow = node.columns.length > MAX_VISIBLE_COLUMNS ? 1 : 0

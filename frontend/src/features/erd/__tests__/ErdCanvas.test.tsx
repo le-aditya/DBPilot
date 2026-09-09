@@ -69,10 +69,13 @@ describe('ErdCanvas', () => {
     // scope to the canvas rather than asserting on a name that legitimately
     // appears in both.
     render(<ErdCanvas projectId={1} erd={ERD} />)
-    const canvas = within(screen.getByRole('img', { name: /entity relationship/i }))
+    const canvas = screen.getByRole('img', { name: /entity relationship/i })
 
-    expect(canvas.getByText('customers')).toBeInTheDocument()
-    expect(canvas.getByText('orders')).toBeInTheDocument()
+    // Each node also carries a <title> with the untruncated name, so match the
+    // drawn <text> specifically rather than any element holding the string.
+    const drawn = [...canvas.querySelectorAll('text')].map((one) => one.textContent)
+    expect(drawn).toContain('customers')
+    expect(drawn).toContain('orders')
   })
 
   it('labels the edge with its cardinality', () => {
@@ -121,8 +124,35 @@ describe('ErdCanvas', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /re-arrange/i }))
 
-    const canvas = within(screen.getByRole('img', { name: /entity relationship/i }))
-    expect(canvas.getByText('customers')).toBeInTheDocument()
+    const canvas = screen.getByRole('img', { name: /entity relationship/i })
+    const drawn = [...canvas.querySelectorAll('text')].map((one) => one.textContent)
+    expect(drawn).toContain('customers')
+  })
+
+  it('truncates a long table name so it cannot draw over the row count', () => {
+    // The bug in the wild: `online_food_delivery_dataset` overlapped its count.
+    const long = 'online_food_delivery_dataset'
+    render(
+      <ErdCanvas
+        projectId={1}
+        erd={{ nodes: [{ ...ERD.nodes[0], name: long }], edges: [] }}
+      />,
+    )
+    const canvas = screen.getByRole('img', { name: /entity relationship/i })
+
+    const drawn = [...canvas.querySelectorAll('text')].map((one) => one.textContent)
+    expect(drawn).not.toContain(long)
+    expect(drawn.some((one) => one?.endsWith('…'))).toBe(true)
+    // The full name is still reachable, as the SVG tooltip.
+    expect(canvas.querySelector('title')?.textContent).toBe(long)
+  })
+
+  it('explains why a single-table diagram has no lines', () => {
+    render(
+      <ErdCanvas projectId={1} erd={{ nodes: [ERD.nodes[0]], edges: [] }} />,
+    )
+
+    expect(screen.getByText(/no relationships to draw yet/i)).toBeInTheDocument()
   })
 
   it('offers both export formats', () => {

@@ -12,14 +12,16 @@ import { UploadPanel } from '../features/upload/UploadPanel'
 import { apiFetch } from '../lib/api'
 import type { Project, ProjectSchema } from '../lib/types'
 
-type View = 'query' | 'schema' | 'diagram' | 'dashboard' | 'history'
+type View = 'query' | 'diagram' | 'data' | 'dashboard' | 'history'
 
-const VIEWS: View[] = ['query', 'schema', 'diagram', 'dashboard', 'history']
+const VIEWS: View[] = ['query', 'diagram', 'data', 'dashboard', 'history']
 
 const LABELS: Record<View, string> = {
   query: 'Query',
-  schema: 'Schema',
   diagram: 'Diagram',
+  // "Data" rather than "Schema": the diagram already shows the columns, so what
+  // is uniquely here is the rows (PRD F3's preview, search and index list).
+  data: 'Data',
   dashboard: 'Dashboard',
   history: 'History',
 }
@@ -31,6 +33,9 @@ export function ProjectDetail() {
   const [schema, setSchema] = useState<ProjectSchema | null>(null)
   const [adding, setAdding] = useState(false)
   const [view, setView] = useState<View>('query')
+  // Lifted out of QueryWorkspace so History can load a query into it, and so it
+  // survives switching tabs.
+  const [sql, setSql] = useState('')
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
@@ -131,16 +136,33 @@ export function ProjectDetail() {
               </Button>
             ) : null}
           </>
-        ) : view === 'query' ? (
-          <QueryWorkspace projectId={id} schema={schema} />
-        ) : view === 'diagram' ? (
-          <ErdPanel projectId={id} />
-        ) : view === 'dashboard' ? (
-          <Dashboard projectId={id} />
-        ) : view === 'history' ? (
-          <History projectId={id} />
         ) : (
-          <SchemaExplorer projectId={id} schema={schema} />
+          <>
+            {/* Kept mounted, not unmounted, so a half-written question and its
+                results are still there when you come back from another tab. */}
+            <div hidden={view !== 'query'}>
+              <QueryWorkspace
+                projectId={id}
+                schema={schema}
+                sql={sql}
+                onSqlChange={setSql}
+              />
+            </div>
+            {view === 'diagram' ? <ErdPanel projectId={id} /> : null}
+            {view === 'data' ? (
+              <SchemaExplorer projectId={id} schema={schema} />
+            ) : null}
+            {view === 'dashboard' ? <Dashboard projectId={id} /> : null}
+            {view === 'history' ? (
+              <History
+                projectId={id}
+                onReuse={(reused) => {
+                  setSql(reused)
+                  setView('query')
+                }}
+              />
+            ) : null}
+          </>
         )}
       </div>
     </main>
