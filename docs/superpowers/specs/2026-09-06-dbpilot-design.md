@@ -155,12 +155,20 @@ Layers 3 and 4 live in `app/services/execution.py`:
 ```sql
 BEGIN;
 SET LOCAL ROLE ro_p<project_id>;
-SET LOCAL default_transaction_read_only = on;
+SET TRANSACTION READ ONLY;
 SET LOCAL statement_timeout = '10s';
 SET LOCAL search_path = 'user_<id>_<project>';
 -- gated statement
 ROLLBACK;
 ```
+
+**Correction (2026-09-09, verified against PostgreSQL 18.6).** This block
+originally said `SET LOCAL default_transaction_read_only = on`. That setting
+only supplies the default for *subsequent* transactions; inside an already-open
+transaction it has no effect, and a probe confirmed an `INSERT` still succeeded
+under it. `SET TRANSACTION READ ONLY` is the statement that constrains the
+current transaction, and the same probe confirmed it raises
+`ReadOnlySqlTransaction`. Layer 3 would have been a no-op as first written.
 
 The transaction always rolls back. A SELECT has nothing to commit, and rollback
 makes an accidental write impossible even if every layer above failed.
