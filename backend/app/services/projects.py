@@ -5,6 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError
 from app.models import Project, SourceType
+from app.services.provisioning import deprovision
 
 
 async def create_project(
@@ -30,9 +31,12 @@ async def list_projects(session: AsyncSession, *, user_id: int) -> list[Project]
 
 
 async def delete_project(session: AsyncSession, project: Project) -> None:
-    """Phase 3 extends this to drop the project schema and its read-only role.
+    """Delete the project, its data schema, its grants and its read-only role.
 
-    Today a project is metadata only, so deleting the row is the whole job.
+    All four go in one transaction. Dropping only the row would leave the schema
+    and the role behind, and roles would accumulate in the cluster for the life
+    of the installation — the risk carried forward in design document section 16.
     """
+    await deprovision(session, project)
     await session.delete(project)
     await session.flush()

@@ -3,9 +3,9 @@
 import asyncio
 from logging.config import fileConfig
 
-from alembic import context
 from sqlalchemy.engine import Connection
 
+from alembic import context
 from app.core.config import get_settings
 from app.db.base import METADATA_SCHEMA, Base
 from app.db.engine import create_engine

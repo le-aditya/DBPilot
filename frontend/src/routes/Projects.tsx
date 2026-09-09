@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
+import { Link } from 'react-router-dom'
 
 import { Button } from '../components/Button'
 import { Eyebrow } from '../components/Eyebrow'
@@ -125,7 +126,12 @@ export function Projects() {
                 className="flex flex-wrap items-center justify-between gap-4 py-5"
               >
                 <div>
-                  <p className="text-h3 text-text-primary">{project.name}</p>
+                  <Link
+                    to={`/projects/${project.id}`}
+                    className="text-h3 text-text-primary hover:underline"
+                  >
+                    {project.name}
+                  </Link>
                   <p className="mt-1 text-small text-text-secondary">
                     {project.source_type === 'upload' ? 'Uploaded data' : 'Connection'}
                     {project.table_count !== null

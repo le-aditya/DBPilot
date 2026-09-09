@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router-dom'
 
 import { Login } from './routes/Login'
+import { ProjectDetail } from './routes/ProjectDetail'
 import { Projects } from './routes/Projects'
 import { ProtectedRoute } from './routes/ProtectedRoute'
 import { Register } from './routes/Register'
@@ -16,6 +17,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Projects />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/projects/:projectId"
+        element={
+          <ProtectedRoute>
+            <ProjectDetail />
           </ProtectedRoute>
         }
       />

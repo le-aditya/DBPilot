@@ -44,3 +44,15 @@ class ConflictError(AppError):
 class UnauthorizedError(AppError):
     status_code = 401
     code = "unauthorized"
+
+
+class UnprocessableError(AppError):
+    """The request parsed, but what it asked for cannot be done."""
+
+    status_code = 422
+    code = "unprocessable"
+
+
+class PayloadTooLargeError(AppError):
+    status_code = 413
+    code = "payload_too_large"
