@@ -8,6 +8,7 @@ Keeping the escape hatch in one module means there is exactly one place to audit
 when asking "can any user input reach SQL as text?". The answer must stay no.
 """
 
+from collections.abc import Sequence
 from typing import Any, cast
 
 import psycopg
@@ -26,8 +27,8 @@ async def connection_of(session: AsyncSession) -> AsyncConnection:
 
 async def execute(
     connection: AsyncConnection,
-    statement: sql.Composable,
-    params: tuple[Any, ...] | None = None,
+    statement: sql.SQL | sql.Composed,
+    params: Sequence[Any] | None = None,
 ) -> None:
     driver = await driver_of(connection)
     await driver.execute(statement, params)
@@ -35,8 +36,8 @@ async def execute(
 
 async def fetch_all(
     connection: AsyncConnection,
-    statement: sql.Composable,
-    params: tuple[Any, ...] | None = None,
+    statement: sql.SQL | sql.Composed,
+    params: Sequence[Any] | None = None,
 ) -> list[tuple[Any, ...]]:
     driver = await driver_of(connection)
     cursor = await driver.execute(statement, params)
@@ -45,8 +46,8 @@ async def fetch_all(
 
 async def fetch_value(
     connection: AsyncConnection,
-    statement: sql.Composable,
-    params: tuple[Any, ...] | None = None,
+    statement: sql.SQL | sql.Composed,
+    params: Sequence[Any] | None = None,
 ) -> Any:
     rows = await fetch_all(connection, statement, params)
     return rows[0][0] if rows else None

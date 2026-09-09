@@ -74,7 +74,7 @@ def _decode(data: bytes) -> str:
         return data.decode("latin-1")
 
 
-def _reader(data: bytes) -> csv.reader:
+def _reader(data: bytes) -> Iterator[list[str]]:
     return csv.reader(io.StringIO(_decode(data), newline=""))
 
 
@@ -161,7 +161,7 @@ def infer_table(filename: str, data: bytes) -> InferredTable:
     """Read the header and up to SAMPLE_ROWS data rows, and propose a schema."""
     rows = _reader(data)
     try:
-        header = next(rows)
+        header: list[str] = next(rows)
     except StopIteration:
         raise ValueError(f"{filename} has no columns.") from None
     if not header:

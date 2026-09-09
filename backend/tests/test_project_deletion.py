@@ -13,7 +13,6 @@ from app.db import raw
 from app.models import Project, SourceType, User
 from app.services.ingestion import commit_upload
 from app.services.projects import delete_project
-
 from tests.test_ingestion import CUSTOMERS, spec_from
 
 pytestmark = pytest.mark.integration
