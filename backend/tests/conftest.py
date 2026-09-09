@@ -10,9 +10,11 @@ from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
 
 from app.core.config import Settings, get_settings
+from app.core.security import hash_password
 from app.db.engine import create_engine
 from app.db.session import get_session
 from app.main import create_app
+from app.models import Project, SourceType, User
 
 BACKEND = Path(__file__).resolve().parent.parent
 
@@ -82,3 +84,46 @@ async def client(session: AsyncSession) -> AsyncIterator[AsyncClient]:
     async with AsyncClient(transport=transport, base_url="http://test") as opened:
         yield opened
     app.dependency_overrides.clear()
+
+
+@pytest_asyncio.fixture
+async def user(session: AsyncSession) -> User:
+    """A persisted user, for services that take a model rather than a request."""
+    created = User(email="ada@example.com", password_hash=hash_password("secret-123"))
+    session.add(created)
+    await session.flush()
+    return created
+
+
+@pytest_asyncio.fixture
+async def project(session: AsyncSession, user: User) -> Project:
+    created = Project(user_id=user.id, name="Sales", source_type=SourceType.upload)
+    session.add(created)
+    await session.flush()
+    return created
+
+
+async def register(client: AsyncClient, email: str) -> dict[str, str]:
+    """Register `email` and return the bearer header for the new session."""
+    response = await client.post(
+        "/auth/register", json={"email": email, "password": "a-good-password"}
+    )
+    return {"Authorization": f"Bearer {response.json()['access_token']}"}
+
+
+@pytest_asyncio.fixture
+async def auth_headers(client: AsyncClient) -> dict[str, str]:
+    return await register(client, "ada@example.com")
+
+
+@pytest_asyncio.fixture
+async def other_headers(client: AsyncClient) -> dict[str, str]:
+    return await register(client, "grace@example.com")
+
+
+@pytest_asyncio.fixture
+async def api_project(client: AsyncClient, auth_headers: dict[str, str]) -> dict:
+    response = await client.post(
+        "/projects", json={"name": "Sales", "source_type": "upload"}, headers=auth_headers
+    )
+    return response.json()
