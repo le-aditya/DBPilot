@@ -98,3 +98,27 @@ export interface Project {
   is_demo: boolean
   created_at: string
 }
+
+export type QueryStatus = 'success' | 'error' | 'blocked'
+
+export interface ExecuteResponse {
+  query_id: number
+  status: QueryStatus
+  columns: string[]
+  rows: (string | number | boolean | null)[][]
+  row_count: number
+  duration_ms: number
+  executed_sql: string | null
+  truncated: boolean
+  error: string | null
+  rule: string | null
+}
+
+export interface QuestionResponse {
+  sql: string
+  assumptions: string[]
+  confidence: string
+  missing: string | null
+  cached: boolean
+  execution: ExecuteResponse | null
+}

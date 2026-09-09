@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { Button } from '../components/Button'
 import { Eyebrow } from '../components/Eyebrow'
+import { QueryWorkspace } from '../features/query/QueryWorkspace'
 import { SchemaExplorer } from '../features/schema/SchemaExplorer'
 import { UploadPanel } from '../features/upload/UploadPanel'
 import { apiFetch } from '../lib/api'
@@ -14,6 +15,7 @@ export function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null)
   const [schema, setSchema] = useState<ProjectSchema | null>(null)
   const [adding, setAdding] = useState(false)
+  const [view, setView] = useState<'query' | 'schema'>('query')
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
@@ -59,7 +61,7 @@ export function ProjectDetail() {
 
       <div className="mt-6 flex flex-wrap items-start justify-between gap-6">
         <div>
-          <Eyebrow>{hasData ? 'Schema' : 'New project'}</Eyebrow>
+          <Eyebrow>{hasData ? 'Workspace' : 'New project'}</Eyebrow>
           <h2 className="mt-6 text-h2 text-text-primary">{project.name}</h2>
           {hasData ? (
             <p className="mt-2 text-small text-text-secondary">
@@ -68,9 +70,27 @@ export function ProjectDetail() {
           ) : null}
         </div>
         {hasData && !adding ? (
-          <Button variant="ghost" onClick={() => setAdding(true)}>
-            Add more data
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {(['query', 'schema'] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setView(option)}
+                aria-current={view === option}
+                className={
+                  'rounded-full border px-4 py-2 text-small transition-colors ' +
+                  (view === option
+                    ? 'border-border-hover text-text-primary'
+                    : 'border-border text-text-secondary hover:border-border-hover')
+                }
+              >
+                {option === 'query' ? 'Query' : 'Schema'}
+              </button>
+            ))}
+            <Button variant="ghost" onClick={() => setAdding(true)}>
+              Add data
+            </Button>
+          </div>
         ) : null}
       </div>
 
@@ -96,6 +116,8 @@ export function ProjectDetail() {
               </Button>
             ) : null}
           </>
+        ) : view === 'query' ? (
+          <QueryWorkspace projectId={id} schema={schema} />
         ) : (
           <SchemaExplorer projectId={id} schema={schema} />
         )}

@@ -51,3 +51,16 @@ async def fetch_value(
 ) -> Any:
     rows = await fetch_all(connection, statement, params)
     return rows[0][0] if rows else None
+
+
+async def fetch_all_with_columns(
+    connection: AsyncConnection,
+    statement: sql.SQL | sql.Composed,
+    params: Sequence[Any] | None = None,
+) -> tuple[list[str], list[tuple[Any, ...]]]:
+    """Rows plus their column names, which a result set needs and psycopg
+    exposes only on the cursor."""
+    driver = await driver_of(connection)
+    cursor = await driver.execute(statement, params)
+    names = [column.name for column in cursor.description or []]
+    return names, await cursor.fetchall()
