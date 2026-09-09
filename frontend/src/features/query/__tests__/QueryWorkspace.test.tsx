@@ -162,7 +162,8 @@ describe('QueryWorkspace', () => {
 
     await waitFor(() => {
       const call = apiFetch.mock.calls.at(-1)
-      expect(JSON.parse(call[1].body).was_edited).toBe(true)
+      expect(call).toBeDefined()
+      expect(JSON.parse(call![1].body as string).was_edited).toBe(true)
     })
   })
 
