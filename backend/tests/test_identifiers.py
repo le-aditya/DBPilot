@@ -39,4 +39,17 @@ def test_schema_name_stays_within_the_identifier_limit() -> None:
 
 
 def test_role_name_is_derived_from_the_project_id() -> None:
-    assert role_name_for(42) == "ro_p42"
+    assert role_name_for(42, "dbpilot") == "ro_dbpilot_p42"
+
+
+def test_two_databases_in_one_cluster_get_different_role_names() -> None:
+    """Roles are cluster-wide; schemas and DROP OWNED BY are per-database.
+
+    Without this, project 3 in dbpilot_test and project 3 in dbpilot share a
+    role, and deleting either fails on objects owned in the other.
+    """
+    assert role_name_for(3, "dbpilot") != role_name_for(3, "dbpilot_test")
+
+
+def test_a_long_database_name_still_fits_the_identifier_limit() -> None:
+    assert len(role_name_for(42, "d" * 200)) <= MAX_IDENTIFIER_BYTES

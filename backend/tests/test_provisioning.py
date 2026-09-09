@@ -33,7 +33,10 @@ async def test_provision_creates_the_schema_and_role(
     schema, role = await provision(session, project)
 
     assert schema == f"user_{user.id}_sales"
-    assert role == f"ro_p{project.id}"
+    # Qualified by database, so a cluster hosting both dbpilot and
+    # dbpilot_test does not hand two projects the same role.
+    assert role.endswith(f"_p{project.id}")
+    assert role.startswith("ro_dbpilot")
     assert await _schema_exists(session, schema)
     assert await _role_exists(session, role)
 

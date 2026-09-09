@@ -5,9 +5,11 @@ import { Button } from '../../components/Button'
 import { apiFetch, ApiError } from '../../lib/api'
 import type {
   ExecuteResponse,
+  ExplanationResponse,
   ProjectSchema,
   QuestionResponse,
 } from '../../lib/types'
+import { ExplanationPanel } from './ExplanationPanel'
 import { ResultsTable } from './ResultsTable'
 import { SchemaRail } from './SchemaRail'
 
@@ -31,6 +33,9 @@ export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
   const [error, setError] = useState('')
   const [asking, setAsking] = useState(false)
   const [running, setRunning] = useState(false)
+  const [explanation, setExplanation] = useState<ExplanationResponse | null>(null)
+  const [notes, setNotes] = useState<ExplanationResponse | null>(null)
+  const [busyPanel, setBusyPanel] = useState<'explain' | 'optimize' | null>(null)
 
   const edited = sql.trim() !== generatedSql.trim()
 
@@ -44,6 +49,8 @@ export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
         { method: 'POST', body: JSON.stringify({ question }) },
       )
       setAnswer(result)
+      setExplanation(null)
+      setNotes(null)
       setSql(result.sql)
       setGeneratedSql(result.sql)
       setExecution(result.execution)
@@ -56,6 +63,24 @@ export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
       )
     } finally {
       setAsking(false)
+    }
+  }
+
+  async function describe(kind: 'explain' | 'optimize') {
+    if (!sql.trim()) return
+    setError('')
+    setBusyPanel(kind)
+    try {
+      const result = await apiFetch<ExplanationResponse>(
+        `/projects/${projectId}/${kind}`,
+        { method: 'POST', body: JSON.stringify({ sql }) },
+      )
+      if (kind === 'explain') setExplanation(result)
+      else setNotes(result)
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : 'That could not be analysed.')
+    } finally {
+      setBusyPanel(null)
     }
   }
 
@@ -161,6 +186,20 @@ export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
             <Button onClick={() => void run()} disabled={running || !sql.trim()}>
               {running ? 'Running…' : 'Run query'}
             </Button>
+            <Button
+              variant="ghost"
+              onClick={() => void describe('explain')}
+              disabled={busyPanel !== null || !sql.trim()}
+            >
+              {busyPanel === 'explain' ? 'Explaining…' : 'Explain'}
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => void describe('optimize')}
+              disabled={busyPanel !== null || !sql.trim()}
+            >
+              {busyPanel === 'optimize' ? 'Analysing…' : 'Optimise'}
+            </Button>
             {execution?.status === 'success' ? (
               <span className="text-small text-text-secondary">
                 {execution.row_count} rows in {execution.duration_ms} ms
@@ -176,6 +215,23 @@ export function QueryWorkspace({ projectId, schema }: QueryWorkspaceProps) {
         ) : null}
 
         {execution ? <ResultsTable execution={execution} /> : null}
+
+        {explanation ? (
+          <ExplanationPanel
+            sql={sql}
+            summary={explanation.summary}
+            clauses={explanation.clauses}
+          />
+        ) : null}
+
+        {notes ? (
+          <ExplanationPanel
+            sql={sql}
+            summary={notes.summary}
+            clauses={notes.clauses}
+            variant="optimize"
+          />
+        ) : null}
       </div>
     </div>
   )
