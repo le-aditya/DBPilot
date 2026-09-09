@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 
 import { Button } from '../components/Button'
 import { Eyebrow } from '../components/Eyebrow'
+import { ErdPanel } from '../features/erd/ErdPanel'
 import { QueryWorkspace } from '../features/query/QueryWorkspace'
 import { SchemaExplorer } from '../features/schema/SchemaExplorer'
 import { UploadPanel } from '../features/upload/UploadPanel'
@@ -15,7 +16,7 @@ export function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null)
   const [schema, setSchema] = useState<ProjectSchema | null>(null)
   const [adding, setAdding] = useState(false)
-  const [view, setView] = useState<'query' | 'schema'>('query')
+  const [view, setView] = useState<'query' | 'schema' | 'diagram'>('query')
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
@@ -71,7 +72,7 @@ export function ProjectDetail() {
         </div>
         {hasData && !adding ? (
           <div className="flex flex-wrap items-center gap-2">
-            {(['query', 'schema'] as const).map((option) => (
+            {(['query', 'schema', 'diagram'] as const).map((option) => (
               <button
                 key={option}
                 type="button"
@@ -84,7 +85,7 @@ export function ProjectDetail() {
                     : 'border-border text-text-secondary hover:border-border-hover')
                 }
               >
-                {option === 'query' ? 'Query' : 'Schema'}
+                {option === 'query' ? 'Query' : option === 'schema' ? 'Schema' : 'Diagram'}
               </button>
             ))}
             <Button variant="ghost" onClick={() => setAdding(true)}>
@@ -118,6 +119,8 @@ export function ProjectDetail() {
           </>
         ) : view === 'query' ? (
           <QueryWorkspace projectId={id} schema={schema} />
+        ) : view === 'diagram' ? (
+          <ErdPanel projectId={id} />
         ) : (
           <SchemaExplorer projectId={id} schema={schema} />
         )}

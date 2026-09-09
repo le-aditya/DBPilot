@@ -71,6 +71,16 @@ def schema_name_for(user_id: int, project_name: str) -> str:
     return f"{prefix}{slug[: MAX_IDENTIFIER_BYTES - len(prefix)]}"
 
 
-def role_name_for(project_id: int) -> str:
-    """The read-only role for one project. Design document section 6, layer 4."""
-    return f"ro_p{project_id}"
+def role_name_for(project_id: int, database: str) -> str:
+    """The read-only role for one project. Design document section 6, layer 4.
+
+    Qualified by database on purpose. Roles are cluster-wide while schemas and
+    DROP OWNED BY are per-database, so two databases in one cluster -- an app
+    database and its test database, or staging beside production -- hand out the
+    same project ids and would otherwise collide on one role. Deleting a project
+    in one database then fails with "role cannot be dropped because some objects
+    depend on it", naming objects in the other.
+    """
+    suffix = f"_p{project_id}"
+    stem = f"ro_{normalise(database)}"
+    return f"{stem[: MAX_IDENTIFIER_BYTES - len(suffix)]}{suffix}"

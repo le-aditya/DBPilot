@@ -122,3 +122,48 @@ export interface QuestionResponse {
   cached: boolean
   execution: ExecuteResponse | null
 }
+
+export interface ErdColumn {
+  name: string
+  data_type: string
+  nullable: boolean
+  is_primary_key: boolean
+  is_foreign_key: boolean
+}
+
+export interface ErdNode {
+  name: string
+  row_count: number
+  is_junction: boolean
+  columns: ErdColumn[]
+  x: number | null
+  y: number | null
+}
+
+export type Cardinality = '1:1' | '1:N' | 'N:M'
+
+export interface ErdEdge {
+  source: string
+  target: string
+  source_column: string
+  target_column: string
+  cardinality: Cardinality
+  via: string | null
+}
+
+export interface ErdResponse {
+  nodes: ErdNode[]
+  edges: ErdEdge[]
+}
+
+export interface ExplanationClause {
+  clause: string
+  text: string
+  start: number
+  end: number
+}
+
+export interface ExplanationResponse {
+  summary: string
+  clauses: ExplanationClause[]
+}

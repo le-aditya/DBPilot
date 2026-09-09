@@ -18,6 +18,11 @@ from app.models import Project
 from app.services.identifiers import role_name_for, schema_name_for
 
 
+async def _database_name(session: AsyncSession) -> str:
+    connection = await raw.connection_of(session)
+    return str(await raw.fetch_value(connection, sql.SQL("SELECT current_database()")))
+
+
 async def _role_exists(session: AsyncSession, role: str) -> bool:
     connection = await raw.connection_of(session)
     found = await raw.fetch_value(
@@ -56,7 +61,9 @@ async def provision(session: AsyncSession, project: Project) -> tuple[str, str]:
     a convention that may have changed (design document section 5).
     """
     schema = project.schema_name or schema_name_for(project.user_id, project.name)
-    role = project.readonly_role or role_name_for(project.id)
+    role = project.readonly_role or role_name_for(
+        project.id, await _database_name(session)
+    )
     connection = await raw.connection_of(session)
 
     await raw.execute(
