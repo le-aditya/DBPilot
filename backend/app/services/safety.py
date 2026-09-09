@@ -95,7 +95,7 @@ _FORBIDDEN_FUNCTIONS = frozenset(
 )
 
 
-def _function_name(node: exp.Expression) -> str | None:
+def _function_name(node: object) -> str | None:
     if isinstance(node, exp.Anonymous):
         return str(node.this).lower()
     if isinstance(node, exp.Func):

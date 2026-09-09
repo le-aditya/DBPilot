@@ -56,3 +56,10 @@ class UnprocessableError(AppError):
 class PayloadTooLargeError(AppError):
     status_code = 413
     code = "payload_too_large"
+
+
+class ServiceUnavailableError(AppError):
+    """A dependency we do not control is down. The rest of the app still works."""
+
+    status_code = 503
+    code = "service_unavailable"
