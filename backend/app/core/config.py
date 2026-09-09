@@ -35,10 +35,18 @@ class Settings(BaseSettings):
 
     # AI — PRD F5
     gemini_api_key: str | None = None
-    gemini_model: str = "gemini-2.0-flash"
+    # Pinned, not "-latest": the same question against the same schema should
+    # not start producing different SQL because a model rolled forward.
+    # gemini-2.0-flash was retired. Measured 2026-09-09 against this key:
+    # 3.5-flash answered in ~7s, while 3.6-flash and flash-latest were returning
+    # 503 "high demand" or hanging past 20s. Revisit if that changes.
+    gemini_model: str = "gemini-3.5-flash"
 
     # Limits — PRD §9
     statement_timeout_seconds: int = 10
+    # PRD section 9 budget for the whole AI round trip, retries included --
+    # GeminiProvider treats it as a deadline shared across attempts, not as a
+    # per-attempt timeout, so retrying cannot quietly multiply the wait.
     ai_timeout_seconds: int = 30
     max_upload_bytes: int = 25 * 1024 * 1024
     default_row_limit: int = 1000
