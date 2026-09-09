@@ -4,11 +4,25 @@ import { Link, useParams } from 'react-router-dom'
 import { Button } from '../components/Button'
 import { Eyebrow } from '../components/Eyebrow'
 import { ErdPanel } from '../features/erd/ErdPanel'
+import { Dashboard } from '../features/insights/Dashboard'
+import { History } from '../features/insights/History'
 import { QueryWorkspace } from '../features/query/QueryWorkspace'
 import { SchemaExplorer } from '../features/schema/SchemaExplorer'
 import { UploadPanel } from '../features/upload/UploadPanel'
 import { apiFetch } from '../lib/api'
 import type { Project, ProjectSchema } from '../lib/types'
+
+type View = 'query' | 'schema' | 'diagram' | 'dashboard' | 'history'
+
+const VIEWS: View[] = ['query', 'schema', 'diagram', 'dashboard', 'history']
+
+const LABELS: Record<View, string> = {
+  query: 'Query',
+  schema: 'Schema',
+  diagram: 'Diagram',
+  dashboard: 'Dashboard',
+  history: 'History',
+}
 
 export function ProjectDetail() {
   const { projectId } = useParams()
@@ -16,7 +30,7 @@ export function ProjectDetail() {
   const [project, setProject] = useState<Project | null>(null)
   const [schema, setSchema] = useState<ProjectSchema | null>(null)
   const [adding, setAdding] = useState(false)
-  const [view, setView] = useState<'query' | 'schema' | 'diagram'>('query')
+  const [view, setView] = useState<View>('query')
   const [error, setError] = useState('')
 
   const load = useCallback(async () => {
@@ -72,7 +86,7 @@ export function ProjectDetail() {
         </div>
         {hasData && !adding ? (
           <div className="flex flex-wrap items-center gap-2">
-            {(['query', 'schema', 'diagram'] as const).map((option) => (
+            {VIEWS.map((option) => (
               <button
                 key={option}
                 type="button"
@@ -85,7 +99,7 @@ export function ProjectDetail() {
                     : 'border-border text-text-secondary hover:border-border-hover')
                 }
               >
-                {option === 'query' ? 'Query' : option === 'schema' ? 'Schema' : 'Diagram'}
+                {LABELS[option]}
               </button>
             ))}
             <Button variant="ghost" onClick={() => setAdding(true)}>
@@ -121,6 +135,10 @@ export function ProjectDetail() {
           <QueryWorkspace projectId={id} schema={schema} />
         ) : view === 'diagram' ? (
           <ErdPanel projectId={id} />
+        ) : view === 'dashboard' ? (
+          <Dashboard projectId={id} />
+        ) : view === 'history' ? (
+          <History projectId={id} />
         ) : (
           <SchemaExplorer projectId={id} schema={schema} />
         )}

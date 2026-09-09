@@ -137,3 +137,21 @@ export async function apiFetch<T>(
 export function apiUpload<T>(path: string, body: FormData): Promise<T> {
   return apiFetch<T>(path, { method: 'POST', body })
 }
+
+/**
+ * Like apiFetch, but returns the Response.
+ *
+ * Downloads need the body as a blob and the filename from the caller, and a
+ * plain <a href> would drop the Authorization header entirely.
+ */
+export async function apiRaw(
+  path: string,
+  options: RequestInit = {},
+): Promise<Response> {
+  let response = await request(path, options)
+  if (response.status === 401 && (await refreshSession())) {
+    response = await request(path, options)
+  }
+  if (!response.ok) throw await toError(response)
+  return response
+}
