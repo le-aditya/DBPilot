@@ -60,7 +60,13 @@ async function toError(response: Response): Promise<ApiError> {
 
 function request(path: string, options: RequestInit): Promise<Response> {
   const headers = new Headers(options.headers)
-  if (!headers.has('Content-Type') && options.body !== undefined) {
+  // FormData must set its own Content-Type: the boundary is part of it, and
+  // overriding it with application/json makes the server see a malformed body.
+  if (
+    !headers.has('Content-Type') &&
+    options.body !== undefined &&
+    !(options.body instanceof FormData)
+  ) {
     headers.set('Content-Type', 'application/json')
   }
   const token = getAccessToken()
@@ -125,4 +131,9 @@ export async function apiFetch<T>(
   if (!response.ok) throw await toError(response)
   if (response.status === 204) return null as T
   return (await response.json()) as T
+}
+
+/** POST a multipart body. Content-Type is left to the browser — see request(). */
+export function apiUpload<T>(path: string, body: FormData): Promise<T> {
+  return apiFetch<T>(path, { method: 'POST', body })
 }
