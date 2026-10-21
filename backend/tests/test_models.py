@@ -7,6 +7,7 @@ from app.models import (  # noqa: F401  (import registers the mappers)
     Query,
     RefreshToken,
     SavedQuery,
+    SavedQueryVersion,
     Upload,
     User,
 )
@@ -19,6 +20,7 @@ EXPECTED_TABLES = {
     "queries",
     "explanations",
     "saved_queries",
+    "saved_query_versions",
     "refresh_tokens",
     "diagram_layouts",
 }

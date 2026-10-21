@@ -15,7 +15,9 @@ from app.schemas.insights import (
     QuerySummaryResponse,
     RunSavedRequest,
     SavedQueryResponse,
+    SavedQueryVersionResponse,
     SaveQueryRequest,
+    UpdateSavedQueryRequest,
 )
 from app.schemas.query import ExecuteResponse
 from app.services.analytics import QuerySummary, build_dashboard, list_history
@@ -28,7 +30,9 @@ from app.services.saved import (
     delete_saved,
     get_saved,
     list_saved,
+    list_versions,
     save_query,
+    update_saved,
 )
 
 router = APIRouter(tags=["insights"])
@@ -168,6 +172,39 @@ async def create(
     )
     await session.commit()
     return SavedQueryResponse.model_validate(saved)
+
+
+@router.patch("/saved-queries/{saved_id}")
+async def revise(
+    body: UpdateSavedQueryRequest,
+    saved_id: int,
+    user: CurrentUser,
+    session: SessionDep,
+) -> SavedQueryResponse:
+    """Rename or edit a saved query. An edit keeps the previous SQL as a revision."""
+    saved = await update_saved(
+        session,
+        user_id=user.id,
+        saved_id=saved_id,
+        name=body.name,
+        sql_template=body.sql_template,
+    )
+    await session.commit()
+    return SavedQueryResponse.model_validate(saved)
+
+
+@router.get("/saved-queries/{saved_id}/versions")
+async def versions(
+    saved_id: int, user: CurrentUser, session: SessionDep
+) -> list[SavedQueryVersionResponse]:
+    """Every revision, newest first, for the history diff."""
+    # Ownership is asserted here rather than inferred from the filter below, so
+    # another user's id is a 404 and not an empty list that leaks existence.
+    await get_saved(session, user_id=user.id, saved_id=saved_id)
+    return [
+        SavedQueryVersionResponse.model_validate(one)
+        for one in await list_versions(session, saved_id=saved_id)
+    ]
 
 
 @router.delete("/saved-queries/{saved_id}", status_code=status.HTTP_204_NO_CONTENT)

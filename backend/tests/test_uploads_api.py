@@ -212,3 +212,85 @@ async def test_commit_on_another_users_project_is_a_404(
     )
 
     assert response.status_code == 404
+
+
+async def test_a_first_analysis_has_nothing_to_diff(
+    client: AsyncClient, auth_headers: dict[str, str], api_project: dict
+) -> None:
+    response = await client.post(
+        f"/projects/{api_project['id']}/upload", headers=auth_headers, files=csv_file()
+    )
+
+    assert response.json()["tables"][0]["diff"] is None
+
+
+async def test_reanalysing_a_file_reports_the_column_changes(
+    client: AsyncClient, auth_headers: dict[str, str], api_project: dict
+) -> None:
+    """Re-uploading replaces the table, so the review must show what that means."""
+    url = f"/projects/{api_project['id']}/upload"
+    analysis = await client.post(url, headers=auth_headers, files=csv_file())
+    table = analysis.json()["tables"][0]
+    spec = {
+        "tables": [
+            {
+                "name": table["name"],
+                "source_filename": table["source_filename"],
+                "columns": table["columns"],
+                "primary_key": None,
+                "foreign_keys": [],
+            }
+        ]
+    }
+    await client.post(
+        f"{url}/commit",
+        headers=auth_headers,
+        files=csv_file(),
+        data={"spec": json.dumps(spec)},
+    )
+
+    # A column is added and `amount` stops looking numeric.
+    changed = b"Order ID,Amount,Note\n1,ten,hello\n2,eleven,bye\n"
+    again = await client.post(url, headers=auth_headers, files=csv_file(data=changed))
+
+    diff = again.json()["tables"][0]["diff"]
+    assert diff["existing"] is True
+    assert diff["previous_row_count"] == 2
+    assert diff["added_columns"] == ["note"]
+    assert diff["removed_columns"] == []
+    assert diff["type_changes"] == [
+        {"column": "amount", "was": "numeric", "now": "text"}
+    ]
+    assert diff["unchanged"] is False
+
+
+async def test_an_identical_reupload_is_reported_as_unchanged(
+    client: AsyncClient, auth_headers: dict[str, str], api_project: dict
+) -> None:
+    url = f"/projects/{api_project['id']}/upload"
+    analysis = await client.post(url, headers=auth_headers, files=csv_file())
+    table = analysis.json()["tables"][0]
+    spec = {
+        "tables": [
+            {
+                "name": table["name"],
+                "source_filename": table["source_filename"],
+                "columns": table["columns"],
+                "primary_key": None,
+                "foreign_keys": [],
+            }
+        ]
+    }
+    await client.post(
+        f"{url}/commit",
+        headers=auth_headers,
+        files=csv_file(),
+        data={"spec": json.dumps(spec)},
+    )
+
+    again = await client.post(url, headers=auth_headers, files=csv_file())
+
+    diff = again.json()["tables"][0]["diff"]
+    assert diff["existing"] is True
+    assert diff["unchanged"] is True
+    assert diff["type_changes"] == []

@@ -64,5 +64,32 @@ class SavedQueryResponse(BaseModel):
     created_at: datetime
 
 
+class UpdateSavedQueryRequest(BaseModel):
+    """Both fields are optional: a rename and a SQL edit are separate actions."""
+
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    sql_template: str | None = Field(default=None, min_length=1)
+
+    @field_validator("name")
+    @classmethod
+    def _reject_blank(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        stripped = value.strip()
+        if not stripped:
+            raise ValueError("A saved query needs a name.")
+        return stripped
+
+
+class SavedQueryVersionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    revision: int
+    sql_template: str
+    parameters: list[dict[str, Any]]
+    created_at: datetime
+
+
 class RunSavedRequest(BaseModel):
     values: dict[str, Any] = Field(default_factory=dict)

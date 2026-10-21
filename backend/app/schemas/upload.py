@@ -14,11 +14,36 @@ class ColumnProposal(BaseModel):
     samples: list[str]
 
 
+class ColumnTypeChange(BaseModel):
+    """A column whose inferred type no longer matches what is stored."""
+
+    column: str
+    was: str
+    now: ColumnType
+
+
+class TableDiff(BaseModel):
+    """What re-uploading this file would change about an existing table.
+
+    `existing` is false for a table this project has never had, in which case
+    everything else is empty because there is nothing to compare against.
+    """
+
+    existing: bool
+    previous_row_count: int | None = None
+    previous_columns: list[str] = Field(default_factory=list)
+    added_columns: list[str] = Field(default_factory=list)
+    removed_columns: list[str] = Field(default_factory=list)
+    type_changes: list[ColumnTypeChange] = Field(default_factory=list)
+    unchanged: bool = True
+
+
 class TableProposal(BaseModel):
     name: str
     source_filename: str
     sampled_rows: int
     columns: list[ColumnProposal]
+    diff: TableDiff | None = None
 
 
 class UploadAnalysis(BaseModel):

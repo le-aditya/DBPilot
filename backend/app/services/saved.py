@@ -2,11 +2,11 @@
 
 from typing import Any
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ConflictError, NotFoundError, UnprocessableError
-from app.models import SavedQuery
+from app.models import SavedQuery, SavedQueryVersion
 from app.services.parameters import Parameter, ParameterType, extract_parameters, for_parsing
 from app.services.safety import Allowed, gate
 
@@ -73,7 +73,91 @@ async def save_query(
     )
     session.add(saved)
     await session.flush()
+    session.add(
+        SavedQueryVersion(
+            saved_query_id=saved.id,
+            revision=1,
+            sql_template=saved.sql_template,
+            parameters=saved.parameters,
+        )
+    )
+    await session.flush()
     return saved
+
+
+async def update_saved(
+    session: AsyncSession,
+    *,
+    user_id: int,
+    saved_id: int,
+    name: str | None = None,
+    sql_template: str | None = None,
+) -> SavedQuery:
+    """Rename a saved query, change its SQL, or both.
+
+    A changed template appends a revision rather than overwriting the old text:
+    the previous version stays runnable and comparable, which is the whole point
+    of keeping history. A rename alone is not a new revision.
+    """
+    saved = await get_saved(session, user_id=user_id, saved_id=saved_id)
+
+    if name is not None and name != saved.name:
+        existing = await session.scalar(
+            select(SavedQuery).where(SavedQuery.user_id == user_id, SavedQuery.name == name)
+        )
+        if existing is not None:
+            raise ConflictError(f"You already have a saved query called {name!r}.")
+        saved.name = name
+
+    if sql_template is not None and sql_template != saved.sql_template:
+        resolved = extract_parameters(sql_template)
+        _check_template(sql_template, resolved)
+
+        latest = await session.scalar(
+            select(func.max(SavedQueryVersion.revision)).where(
+                SavedQueryVersion.saved_query_id == saved.id
+            )
+        )
+        if latest is None:
+            # A query saved before versioning existed: record what it says now
+            # before replacing it, so the diff has something to compare against.
+            session.add(
+                SavedQueryVersion(
+                    saved_query_id=saved.id,
+                    revision=1,
+                    sql_template=saved.sql_template,
+                    parameters=saved.parameters,
+                )
+            )
+            latest = 1
+
+        saved.sql_template = sql_template
+        saved.parameters = _as_dicts(resolved)
+        # The query this was saved from no longer answers this SQL.
+        saved.query_id = None
+        session.add(
+            SavedQueryVersion(
+                saved_query_id=saved.id,
+                revision=latest + 1,
+                sql_template=sql_template,
+                parameters=saved.parameters,
+            )
+        )
+
+    await session.flush()
+    return saved
+
+
+async def list_versions(
+    session: AsyncSession, *, saved_id: int
+) -> list[SavedQueryVersion]:
+    """Newest first, so the most recent change is the one you read first."""
+    rows = await session.scalars(
+        select(SavedQueryVersion)
+        .where(SavedQueryVersion.saved_query_id == saved_id)
+        .order_by(SavedQueryVersion.revision.desc())
+    )
+    return list(rows)
 
 
 async def list_saved(session: AsyncSession, *, user_id: int) -> list[SavedQuery]:

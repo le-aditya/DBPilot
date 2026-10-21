@@ -303,6 +303,134 @@ async def test_saved_queries_are_private_to_their_owner(
     assert deleting.status_code == 404
 
 
+async def test_saving_a_query_records_its_first_revision(
+    live_client: AsyncClient, committed_project: CommittedProject
+) -> None:
+    saved = (
+        await live_client.post(
+            "/saved-queries",
+            headers=committed_project.headers,
+            json={"name": "First", "sql_template": "SELECT * FROM people"},
+        )
+    ).json()
+
+    versions = (
+        await live_client.get(
+            f"/saved-queries/{saved['id']}/versions",
+            headers=committed_project.headers,
+        )
+    ).json()
+
+    assert [one["revision"] for one in versions] == [1]
+    assert versions[0]["sql_template"] == "SELECT * FROM people"
+
+
+async def test_editing_a_saved_query_appends_a_revision_and_keeps_the_old_sql(
+    live_client: AsyncClient, committed_project: CommittedProject
+) -> None:
+    """The whole point of the history: the previous SQL stays readable."""
+    saved = (
+        await live_client.post(
+            "/saved-queries",
+            headers=committed_project.headers,
+            json={"name": "People", "sql_template": "SELECT * FROM people"},
+        )
+    ).json()
+
+    response = await live_client.patch(
+        f"/saved-queries/{saved['id']}",
+        headers=committed_project.headers,
+        json={"sql_template": "SELECT * FROM people WHERE name = :who"},
+    )
+    versions = (
+        await live_client.get(
+            f"/saved-queries/{saved['id']}/versions",
+            headers=committed_project.headers,
+        )
+    ).json()
+
+    assert response.status_code == 200
+    assert [one["revision"] for one in versions] == [2, 1]
+    assert versions[0]["sql_template"] == "SELECT * FROM people WHERE name = :who"
+    assert versions[1]["sql_template"] == "SELECT * FROM people"
+    assert versions[0]["parameters"][0]["name"] == "who"
+
+
+async def test_renaming_alone_does_not_create_a_revision(
+    live_client: AsyncClient, committed_project: CommittedProject
+) -> None:
+    saved = (
+        await live_client.post(
+            "/saved-queries",
+            headers=committed_project.headers,
+            json={"name": "Before", "sql_template": "SELECT 1"},
+        )
+    ).json()
+
+    renamed = await live_client.patch(
+        f"/saved-queries/{saved['id']}",
+        headers=committed_project.headers,
+        json={"name": "After"},
+    )
+    versions = (
+        await live_client.get(
+            f"/saved-queries/{saved['id']}/versions",
+            headers=committed_project.headers,
+        )
+    ).json()
+
+    assert renamed.json()["name"] == "After"
+    assert len(versions) == 1
+
+
+async def test_an_edit_that_writes_is_refused_before_it_is_kept(
+    live_client: AsyncClient, committed_project: CommittedProject
+) -> None:
+    saved = (
+        await live_client.post(
+            "/saved-queries",
+            headers=committed_project.headers,
+            json={"name": "Safe", "sql_template": "SELECT 1"},
+        )
+    ).json()
+
+    response = await live_client.patch(
+        f"/saved-queries/{saved['id']}",
+        headers=committed_project.headers,
+        json={"sql_template": "DELETE FROM people"},
+    )
+    versions = (
+        await live_client.get(
+            f"/saved-queries/{saved['id']}/versions",
+            headers=committed_project.headers,
+        )
+    ).json()
+
+    assert response.status_code == 422
+    assert len(versions) == 1
+
+
+async def test_another_users_versions_are_a_404(
+    live_client: AsyncClient,
+    committed_project: CommittedProject,
+    other_committed_project: CommittedProject,
+) -> None:
+    saved = (
+        await live_client.post(
+            "/saved-queries",
+            headers=committed_project.headers,
+            json={"name": "Mine", "sql_template": "SELECT 1"},
+        )
+    ).json()
+
+    response = await live_client.get(
+        f"/saved-queries/{saved['id']}/versions",
+        headers=other_committed_project.headers,
+    )
+
+    assert response.status_code == 404
+
+
 async def test_a_saved_query_can_be_deleted(
     live_client: AsyncClient, committed_project: CommittedProject
 ) -> None:
