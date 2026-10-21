@@ -25,11 +25,29 @@ export interface ColumnProposal {
   samples: string[]
 }
 
+export interface ColumnTypeChange {
+  column: string
+  was: string
+  now: ColumnType
+}
+
+/** What re-uploading a file would change about the table it already built. */
+export interface UploadTableDiff {
+  existing: boolean
+  previous_row_count: number | null
+  previous_columns: string[]
+  added_columns: string[]
+  removed_columns: string[]
+  type_changes: ColumnTypeChange[]
+  unchanged: boolean
+}
+
 export interface TableProposal {
   name: string
   source_filename: string
   sampled_rows: number
   columns: ColumnProposal[]
+  diff?: UploadTableDiff | null
 }
 
 export interface UploadAnalysis {
@@ -199,11 +217,27 @@ export interface HistoryResponse {
   offset: number
 }
 
+export interface SavedQueryParameter {
+  name: string
+  type: string
+  label: string
+  default: string | null
+}
+
 export interface SavedQuery {
   id: number
   name: string
   sql_template: string
-  parameters: { name: string; type: string; label: string; default: string | null }[]
+  parameters: SavedQueryParameter[]
   query_id: number | null
+  created_at: string
+}
+
+/** One saved snapshot of a query's SQL, created each time it is edited. */
+export interface SavedQueryVersion {
+  id: number
+  revision: number
+  sql_template: string
+  parameters: SavedQueryParameter[]
   created_at: string
 }

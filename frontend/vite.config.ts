@@ -9,5 +9,9 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test-setup.ts'],
+    // The default forks pool fails to spawn on this Windows host ("spawn
+    // UNKNOWN"), which silently dropped a test file from the run. Threads are
+    // reliable here and keep every file in the suite.
+    pool: 'threads',
   },
 })

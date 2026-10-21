@@ -177,6 +177,50 @@ describe('QueryWorkspace', () => {
     })
   })
 
+  it('shows the drafting state while the model is thinking', async () => {
+    // The wait is 8–22 seconds; an empty screen for that long reads as a hang.
+    let settle: (value: unknown) => void = () => {}
+    apiFetch.mockReturnValueOnce(
+      new Promise((resolve) => {
+        settle = resolve
+      }),
+    )
+    renderWorkspace()
+
+    await userEvent.type(screen.getByLabelText(/ask a question/i), 'totals')
+    await userEvent.click(screen.getByRole('button', { name: /generate sql/i }))
+
+    expect(screen.getByText(/drafting sql/i)).toBeInTheDocument()
+    settle({
+      sql: 'SELECT 1',
+      assumptions: [],
+      confidence: 'high',
+      missing: null,
+      cached: false,
+      execution: null,
+    })
+    await waitFor(() =>
+      expect(screen.queryByText(/drafting sql/i)).not.toBeInTheDocument(),
+    )
+  })
+
+  it('shows skeleton rows instead of a blank panel while a query runs', async () => {
+    let settle: (value: unknown) => void = () => {}
+    renderWorkspace()
+    await userEvent.type(screen.getByLabelText(/^sql$/i), 'SELECT 1')
+    apiFetch.mockReturnValueOnce(
+      new Promise((resolve) => {
+        settle = resolve
+      }),
+    )
+
+    await userEvent.click(screen.getByRole('button', { name: /run query/i }))
+
+    expect(screen.getByText(/running read-only/i)).toBeInTheDocument()
+    settle(SUCCESS)
+    expect(await screen.findByText('10.50')).toBeInTheDocument()
+  })
+
   it('inserts a column name from the rail into the SQL', async () => {
     renderWorkspace()
 

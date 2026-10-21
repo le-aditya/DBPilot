@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 
 import { Button } from '../../components/Button'
+import { EmptyState } from '../../components/EmptyState'
+import { Skeleton } from '../../components/Skeleton'
 import { apiFetch } from '../../lib/api'
 import { formatDuration, formatWhen } from '../../lib/format'
 import type { HistoryResponse, QueryStatus } from '../../lib/types'
@@ -43,7 +45,20 @@ export function History({ projectId, onReuse }: HistoryProps) {
       </p>
     )
   }
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="space-y-3">
+        <div className="flex gap-2">
+          {[0, 1, 2, 3].map((index) => (
+            <Skeleton key={index} className="h-9 w-20 rounded-full" />
+          ))}
+        </div>
+        {[0, 1, 2, 3].map((index) => (
+          <Skeleton key={index} className="h-16 w-full" />
+        ))}
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -70,15 +85,23 @@ export function History({ projectId, onReuse }: HistoryProps) {
       </div>
 
       {data.queries.length === 0 ? (
-        <p className="mt-10 text-body text-text-secondary">
-          {filter === 'all'
-            ? 'No queries yet. Ask your first question.'
-            : `No ${filter} queries yet.`}
-        </p>
+        <div className="mt-10">
+          <EmptyState
+            icon="history"
+            title={filter === 'all' ? 'No queries yet' : `No ${filter} queries yet`}
+          >
+            {filter === 'all'
+              ? 'Ask your first question in the Query tab. Every attempt lands here, blocked ones included.'
+              : 'Nothing has been recorded with that status. Try another filter.'}
+          </EmptyState>
+        </div>
       ) : (
         <ul className="mt-8 border-t border-border">
           {data.queries.map((one) => (
-            <li key={one.id} className="border-b border-border py-4">
+            <li
+              key={one.id}
+              className="border-b border-border px-2 py-4 transition-colors duration-150 hover:bg-surface/60"
+            >
               <div className="flex flex-wrap items-baseline gap-3">
                 <StatusDot status={one.status} />
                 <p className="min-w-0 flex-1 text-body text-text-primary">

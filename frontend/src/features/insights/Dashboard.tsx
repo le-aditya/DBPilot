@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
+import { EmptyState } from '../../components/EmptyState'
+import { Skeleton } from '../../components/Skeleton'
 import { apiFetch } from '../../lib/api'
 import { formatBytes, formatCount, formatDuration, formatWhen } from '../../lib/format'
 import type { DashboardResponse, QuerySummary } from '../../lib/types'
@@ -38,7 +40,31 @@ export function Dashboard({ projectId }: DashboardProps) {
       </p>
     )
   }
-  if (!data) return null
+  if (!data) {
+    return (
+      <div className="grid gap-4 md:grid-cols-3">
+        <div className="rounded-2xl border border-border bg-surface p-6 md:col-span-2">
+          <Skeleton className="h-3 w-32" />
+          <Skeleton className="mt-6 h-14 w-32" />
+          <Skeleton className="mt-5 h-4 w-64" />
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-6 md:row-span-2">
+          <Skeleton className="h-3 w-28" />
+          {[0, 1, 2].map((index) => (
+            <Skeleton key={index} className="mt-5 h-10 w-full" />
+          ))}
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <Skeleton className="h-3 w-16" />
+          <Skeleton className="mt-6 h-10 w-20" />
+        </div>
+        <div className="rounded-2xl border border-border bg-surface p-6">
+          <Skeleton className="h-3 w-28" />
+          <Skeleton className="mt-6 h-10 w-full" />
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
@@ -56,9 +82,11 @@ export function Dashboard({ projectId }: DashboardProps) {
       <Card className="md:row-span-2">
         <p className="text-eyebrow uppercase text-text-secondary">Recent activity</p>
         {data.recent.length === 0 ? (
-          <p className="mt-4 text-body text-text-secondary">
-            No queries yet. Ask your first question.
-          </p>
+          <div className="mt-5">
+            <EmptyState compact icon="spark" title="No queries yet">
+              Ask your first question in the Query tab and it will appear here.
+            </EmptyState>
+          </div>
         ) : (
           <ul className="mt-4">
             {data.recent.map((one) => (
@@ -89,7 +117,10 @@ export function Dashboard({ projectId }: DashboardProps) {
       <Card>
         <p className="text-eyebrow uppercase text-text-secondary">Slowest queries</p>
         {data.slowest.length === 0 ? (
-          <p className="mt-4 text-small text-text-secondary">Nothing measured yet.</p>
+          <p className="mt-4 max-w-[40ch] text-small text-text-secondary">
+            No timings yet. Once you run a few queries, the slowest ones surface
+            here so you know what to index.
+          </p>
         ) : (
           <ul className="mt-4">
             {data.slowest.map((one: QuerySummary) => (

@@ -2,6 +2,8 @@ import { useState } from 'react'
 
 import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
+import { EmptyState } from '../../components/EmptyState'
+import { TypingSql } from '../../components/TypingSql'
 import { apiFetch, apiRaw, ApiError } from '../../lib/api'
 import type {
   ExecuteResponse,
@@ -13,6 +15,12 @@ import { ExplanationPanel } from './ExplanationPanel'
 import { SaveQueryDialog } from './SaveQueryDialog'
 import { ResultsTable } from './ResultsTable'
 import { SchemaRail } from './SchemaRail'
+
+const SUGGESTIONS = [
+  'How many rows are in each table?',
+  'Which rows are duplicated?',
+  'Show the 10 largest values',
+]
 
 interface QueryWorkspaceProps {
   projectId: number
@@ -172,6 +180,8 @@ export function QueryWorkspace({
           </Button>
         </div>
 
+        {asking ? <TypingSql question={question} /> : null}
+
         {answer?.missing && !answer.sql ? (
           // PRD F5: say what is missing rather than invent a table.
           <p role="status" className="mt-6 text-body text-text-secondary">
@@ -218,7 +228,11 @@ export function QueryWorkspace({
           </div>
           <div className="mt-4 flex flex-wrap items-center gap-4">
             {/* The single lime element on this screen. */}
-            <Button onClick={() => void run()} disabled={running || !sql.trim()}>
+            <Button
+              onClick={() => void run()}
+              disabled={running || !sql.trim()}
+              loading={running}
+            >
               {running ? 'Running…' : 'Run query'}
             </Button>
             <Button
@@ -289,7 +303,36 @@ export function QueryWorkspace({
           </div>
         ) : null}
 
-        {execution ? <ResultsTable execution={execution} /> : null}
+        {running ? <ResultsTable loading execution={execution} /> : null}
+        {!running && execution ? <ResultsTable execution={execution} /> : null}
+
+        {!running && !execution && !asking ? (
+          <div className="mt-8">
+            <EmptyState
+              compact
+              icon="chart"
+              title="No results yet"
+              className="text-left"
+            >
+              <p className="mx-auto max-w-[52ch]">
+                Ask a question above, or write SQL in the editor and run it.
+                Every query is checked before it touches your data.
+              </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-2">
+                {SUGGESTIONS.map((suggestion) => (
+                  <button
+                    key={suggestion}
+                    type="button"
+                    onClick={() => setQuestion(suggestion)}
+                    className="rounded-full border border-border px-4 py-2 text-small text-text-secondary transition-colors duration-200 hover:border-border-hover hover:bg-surface hover:text-text-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  >
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </EmptyState>
+          </div>
+        ) : null}
 
         {explanation ? (
           <ExplanationPanel

@@ -7,14 +7,15 @@ import { ErdPanel } from '../features/erd/ErdPanel'
 import { Dashboard } from '../features/insights/Dashboard'
 import { History } from '../features/insights/History'
 import { QueryWorkspace } from '../features/query/QueryWorkspace'
+import { SavedQueries } from '../features/query/SavedQueries'
 import { SchemaExplorer } from '../features/schema/SchemaExplorer'
 import { UploadPanel } from '../features/upload/UploadPanel'
 import { apiFetch } from '../lib/api'
 import type { Project, ProjectSchema } from '../lib/types'
 
-type View = 'query' | 'diagram' | 'data' | 'dashboard' | 'history'
+type View = 'query' | 'diagram' | 'data' | 'saved' | 'dashboard' | 'history'
 
-const VIEWS: View[] = ['query', 'diagram', 'data', 'dashboard', 'history']
+const VIEWS: View[] = ['query', 'diagram', 'data', 'saved', 'dashboard', 'history']
 
 const LABELS: Record<View, string> = {
   query: 'Query',
@@ -22,6 +23,7 @@ const LABELS: Record<View, string> = {
   // "Data" rather than "Schema": the diagram already shows the columns, so what
   // is uniquely here is the rows (PRD F3's preview, search and index list).
   data: 'Data',
+  saved: 'Saved',
   dashboard: 'Dashboard',
   history: 'History',
 }
@@ -85,28 +87,15 @@ export function ProjectDetail() {
           <h2 className="mt-6 text-h2 text-text-primary">{project.name}</h2>
           {hasData ? (
             <p className="mt-2 text-small text-text-secondary">
-              {schema.tables.length} tables in {schema.schema_name}
+              {schema.tables.length} tables ·{' '}
+              {schema.tables.reduce((sum, table) => sum + table.row_count, 0).toLocaleString()}{' '}
+              rows · schema{' '}
+              <span className="font-mono">{schema.schema_name}</span>
             </p>
           ) : null}
         </div>
         {hasData && !adding ? (
           <div className="flex flex-wrap items-center gap-2">
-            {VIEWS.map((option) => (
-              <button
-                key={option}
-                type="button"
-                onClick={() => setView(option)}
-                aria-current={view === option}
-                className={
-                  'rounded-full border px-4 py-2 text-small transition-colors ' +
-                  (view === option
-                    ? 'border-border-hover text-text-primary'
-                    : 'border-border text-text-secondary hover:border-border-hover')
-                }
-              >
-                {LABELS[option]}
-              </button>
-            ))}
             <Button variant="ghost" onClick={() => setAdding(true)}>
               Add data
             </Button>
@@ -114,7 +103,43 @@ export function ProjectDetail() {
         ) : null}
       </div>
 
-      <div className="mt-16">
+      {hasData && !adding ? (
+        <nav
+          aria-label="Workspace views"
+          className="sticky top-0 z-10 -mx-6 mt-10 border-b border-border bg-canvas/85 px-6 backdrop-blur"
+        >
+          <div className="flex flex-wrap items-center gap-1 py-2">
+            {VIEWS.map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setView(option)}
+                aria-current={view === option}
+                className={
+                  'relative rounded-full px-4 py-2 text-small ' +
+                  'transition-[background-color,color,box-shadow] duration-200 ' +
+                  'ease-[var(--ease-out)] focus-visible:outline-2 ' +
+                  'focus-visible:outline-offset-2 focus-visible:outline-accent ' +
+                  (view === option
+                    ? 'bg-surface text-text-primary shadow-sm shadow-inset'
+                    : 'text-text-secondary hover:bg-surface/60 hover:text-text-primary')
+                }
+              >
+                {LABELS[option]}
+                <span
+                  aria-hidden="true"
+                  className={
+                    'absolute inset-x-4 -bottom-0.5 h-px transition-opacity duration-200 ' +
+                    (view === option ? 'bg-accent opacity-100' : 'opacity-0')
+                  }
+                />
+              </button>
+            ))}
+          </div>
+        </nav>
+      ) : null}
+
+      <div className="mt-12">
         {!hasData || adding ? (
           <>
             {!hasData ? (
@@ -148,19 +173,42 @@ export function ProjectDetail() {
                 onSqlChange={setSql}
               />
             </div>
-            {view === 'diagram' ? <ErdPanel projectId={id} /> : null}
-            {view === 'data' ? (
-              <SchemaExplorer projectId={id} schema={schema} />
+            {view === 'diagram' ? (
+              <div className="view-enter">
+                <ErdPanel projectId={id} />
+              </div>
             ) : null}
-            {view === 'dashboard' ? <Dashboard projectId={id} /> : null}
+            {view === 'data' ? (
+              <div className="view-enter">
+                <SchemaExplorer projectId={id} schema={schema} />
+              </div>
+            ) : null}
+            {view === 'saved' ? (
+              <div className="view-enter">
+                <SavedQueries
+                  sql={sql}
+                  onLoad={(loaded) => {
+                    setSql(loaded)
+                    setView('query')
+                  }}
+                />
+              </div>
+            ) : null}
+            {view === 'dashboard' ? (
+              <div className="view-enter">
+                <Dashboard projectId={id} />
+              </div>
+            ) : null}
             {view === 'history' ? (
-              <History
-                projectId={id}
-                onReuse={(reused) => {
-                  setSql(reused)
-                  setView('query')
-                }}
-              />
+              <div className="view-enter">
+                <History
+                  projectId={id}
+                  onReuse={(reused) => {
+                    setSql(reused)
+                    setView('query')
+                  }}
+                />
+              </div>
             ) : null}
           </>
         )}

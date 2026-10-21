@@ -1,8 +1,14 @@
 import { useState } from 'react'
 
+import { Badge } from '../../components/Badge'
 import { Button } from '../../components/Button'
 import { Select } from '../../components/Select'
-import { COLUMN_TYPES, type ColumnType, type TableSpec } from '../../lib/types'
+import {
+  COLUMN_TYPES,
+  type ColumnType,
+  type TableSpec,
+  type UploadTableDiff,
+} from '../../lib/types'
 
 interface SchemaReviewProps {
   tables: TableSpec[]
@@ -44,7 +50,8 @@ export function SchemaReview({
       <h3 className="text-h3 text-text-primary">Check the columns</h3>
       <p className="mt-2 max-w-[60ch] text-body text-text-secondary">
         These types were inferred from the first rows of each file. Change
-        anything that looks wrong — nothing has been created yet.
+        anything that looks wrong — nothing has been created yet. Re-uploading a
+        file replaces the table of the same name.
       </p>
 
       {tables.length > 1 ? (
@@ -132,11 +139,12 @@ function TableEditor({
       .map((column) => `${other.name}.${column.name}`),
   )
 
-  return (
-    <div className="mt-8">
+  return (    <div className="mt-8">
       <p className="text-small text-text-secondary">
         {table.source_filename} · {table.sampled_rows} rows sampled
       </p>
+
+      {table.diff?.existing ? <TableDiffNotice diff={table.diff} /> : null}
 
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[760px] border-collapse text-left">
@@ -154,10 +162,29 @@ function TableEditor({
             {table.columns.map((column) => (
               <tr key={column.name} className="border-b border-border align-top">
                 <td className="py-4 pr-4">
-                  <p className="text-body text-text-primary">{column.name}</p>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="text-body text-text-primary">{column.name}</p>
+                    {table.diff?.added_columns.includes(column.name) ? (
+                      <Badge tone="accent">new</Badge>
+                    ) : null}
+                  </div>
                   {column.name !== column.source_name ? (
                     <p className="mt-1 text-small text-text-secondary">
                       from “{column.source_name}”
+                    </p>
+                  ) : null}
+                  {table.diff?.type_changes.find(
+                    (change) => change.column === column.name,
+                  ) ? (
+                    <p className="mt-1 text-small text-text-secondary">
+                      was{' '}
+                      <span className="font-mono">
+                        {
+                          table.diff.type_changes.find(
+                            (change) => change.column === column.name,
+                          )?.was
+                        }
+                      </span>
                     </p>
                   ) : null}
                 </td>
@@ -226,6 +253,69 @@ function TableEditor({
           ))}
         </Select>
       </div>
+    </div>
+  )
+}
+
+/** What a re-upload changes, shown before anything is dropped. */
+function TableDiffNotice({ diff }: { diff: UploadTableDiff }) {
+  const changed =
+    diff.added_columns.length > 0 ||
+    diff.removed_columns.length > 0 ||
+    diff.type_changes.length > 0
+
+  return (
+    <div className="mt-4 rounded-2xl border border-border bg-canvas/60 p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-eyebrow uppercase text-text-secondary">
+          This table already exists
+        </p>
+        <span className="text-small text-text-tertiary">
+          {diff.previous_row_count?.toLocaleString() ?? 0} rows now
+        </span>
+      </div>
+
+      {!changed ? (
+        <p className="mt-3 text-small text-text-secondary">
+          The columns are identical. Committing reloads this table's rows from
+          the new file and leaves its structure alone.
+        </p>
+      ) : (
+        <div className="mt-3 space-y-1.5">
+          {diff.added_columns.length > 0 ? (
+            <p className="text-small text-text-primary">
+              <span className="mr-2 font-mono text-accent">+</span>
+              added{' '}
+              <span className="font-mono text-text-secondary">
+                {diff.added_columns.join(', ')}
+              </span>
+            </p>
+          ) : null}
+          {diff.removed_columns.length > 0 ? (
+            <p className="text-small text-text-primary">
+              <span className="mr-2 font-mono text-text-tertiary">−</span>
+              dropped{' '}
+              <span className="font-mono text-text-secondary">
+                {diff.removed_columns.join(', ')}
+              </span>
+            </p>
+          ) : null}
+          {diff.type_changes.map((change) => (
+            <p key={change.column} className="text-small text-text-primary">
+              <span className="mr-2 font-mono text-text-tertiary">±</span>
+              retyped{' '}
+              <span className="font-mono text-text-secondary">{change.column}</span>{' '}
+              from <span className="font-mono">{change.was}</span> to{' '}
+              <span className="font-mono">{change.now}</span>
+            </p>
+          ))}
+        </div>
+      )}
+
+      <p className="mt-4 text-small text-text-tertiary">
+        Committing drops this table and recreates it, so its existing rows are
+        replaced. Saved SQL that used a dropped column will stop working.
+      </p>
     </div>
   )
 }

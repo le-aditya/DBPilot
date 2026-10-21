@@ -129,6 +129,28 @@ describe('SchemaReview', () => {
     ])
   })
 
+  it('shows what a re-upload changes before anything is dropped', () => {
+    const reuploaded: TableSpec = {
+      ...PEOPLE,
+      diff: {
+        existing: true,
+        previous_row_count: 3,
+        previous_columns: ['id', 'nickname'],
+        added_columns: ['email'],
+        removed_columns: ['nickname'],
+        type_changes: [{ column: 'id', was: 'bigint', now: 'integer' }],
+        unchanged: false,
+      },
+    }
+    renderReview([reuploaded])
+
+    expect(screen.getByText(/this table already exists/i)).toBeInTheDocument()
+    expect(screen.getByText('email')).toBeInTheDocument()
+    expect(screen.getAllByText(/dropped/i).length).toBeGreaterThan(0)
+    expect(screen.getByText(/retyped/i)).toBeInTheDocument()
+    expect(screen.getByText(/3 rows now/i)).toBeInTheDocument()
+  })
+
   it('commits when asked', async () => {
     const { onCommit } = renderReview()
 
