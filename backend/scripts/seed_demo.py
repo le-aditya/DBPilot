@@ -28,7 +28,10 @@ from app.services.inference import ColumnType
 from app.services.ingestion import ColumnSpec, ForeignKeySpec, TableSpec, commit_upload
 from app.services.projects import delete_project
 
-DEMO_EMAIL = "demo@dbpilot.local"
+# Must be a real, public suffix: the login request validates with EmailStr, and
+# email-validator rejects reserved names such as `.local`, so an account seeded
+# under one could never sign in.
+DEMO_EMAIL = "demo@dbpilot.app"
 DEMO_PASSWORD = "demo-account-please-change"
 PROJECT_NAME = "Northwind Lite"
 
