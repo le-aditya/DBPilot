@@ -4,7 +4,7 @@ import asyncio
 from logging.config import fileConfig
 
 from sqlalchemy.engine import Connection
-
+from sqlalchemy import text
 from alembic import context
 from app.core.config import get_settings
 from app.db.base import METADATA_SCHEMA, Base
@@ -56,8 +56,14 @@ def _do_run(connection: Connection) -> None:
 async def run_migrations_online() -> None:
     engine = create_engine(_url())
     async with engine.connect() as connection:
+        await connection.execute(
+            text(f'CREATE SCHEMA IF NOT EXISTS "{METADATA_SCHEMA}"')
+        )
+        await connection.commit()
+
         await connection.run_sync(_do_run)
         await connection.commit()
+
     await engine.dispose()
 
 
